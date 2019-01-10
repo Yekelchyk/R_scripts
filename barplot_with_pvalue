@@ -1,0 +1,58 @@
+# Counts is a RNA-seq dataset 
+
+Gene<-'Mki67'
+
+# code for barplot ####
+
+tidy_gene<-Counts[match(Gene,Counts$`Ensembl gene`),c(19:30)]                 #picks the count matrix, related to the Gene
+tidy_gene<-as.data.frame(t(rbind(colnames(tidy_gene),tidy_gene)))             #makes it tidy
+colnames(tidy_gene)<-c('Type','Expr')
+tidy_gene<-separate(tidy_gene, Type, into = c("Type","Repl"), sep = "_")      #Type contain the treatment, Repl are the replicates
+tidy_gene$Expr<-as.numeric(as.character(tidy_gene$Expr))
+
+SE_average <- summarySE(tidy_gene, measurevar="Expr", groupvars=c("Type"))    #Counts stats
+
+pval<-SE_average
+i<-1
+j<-2
+k<-3
+l<-4
+pv<-t.test2(pval[i,3],pval[j,3],pval[i,4],pval[j,4],pval[i,2],pval[j,2])[4]   #Pick the contitions you want to test
+pv1<-t.test2(pval[k,3],pval[l,3],pval[k,4],pval[l,4],pval[k,2],pval[l,2])[4]
+#pv<-p.adjust(pv,method = "fdr",n=length(rownames(pinfo)))                    #If you want p-adjusted
+
+pd <- position_dodge(1)
+adj<-1.3                                                                      #Ajusting the position of the p-value line
+ggplot(SE_average, aes(x=Type,y=(Expr),color='black')) + 
+  geom_errorbar(aes(ymin=(Expr-se), ymax=(Expr+se)), width=.1, position=pd,colour='black') +
+  geom_bar(aes(fill='white'),
+           position=pd,stat = "identity",show.legend = F,width = 0.25,colour='black')+
+  scale_fill_manual(values=c("white"))+
+  ggtitle(paste('Bulk RNA-Seq:',Gene,''),
+          subtitle = 'n=3, Cond 1 vs Cond 2 vs Cond 3 vs Cond 4')+  
+  xlab('')+
+  ylab('Normalized Expression')+
+  theme_classic()+
+  theme(legend.position="none")+
+#  coord_cartesian(ylim = c(50, 200))+                    #You can limit the region of the barplot with this
+  annotate("rect", xmin = i, xmax = j, 
+           ymin = (pval[c(i,j),][which(pval[c(i,j),]$Expr==max(pval[c(i,j),]$Expr)),3]+
+                   1.65* adj*pval[c(i,j),][which(pval[c(i,j),]$Expr==max(pval[c(i,j),]$Expr)),5]), 
+           ymax =(pval[c(i,j),][which(pval[c(i,j),]$Expr==max(pval[c(i,j),]$Expr)),3]+
+                    1.65*adj*pval[c(i,j),][which(pval[c(i,j),]$Expr==max(pval[c(i,j),]$Expr)),5]), alpha=1,colour = "black")+
+  annotate("text", x = (i+j)/2, 
+           y = 1.12*(pval[c(i,j),][which(pval[c(i,j),]$Expr==max(pval[c(i,j),]$Expr)),3]+
+                    adj*adj*pval[c(i,j),][which(pval[c(i,j),]$Expr==max(pval[c(i,j),]$Expr)),5]), 
+           label = paste("p = ", round(pv, digits = 3)), size = 3.5)+
+
+  annotate("rect", xmin = k, xmax = l, 
+         ymin = (pval[c(k,l),][which(pval[c(k,l),]$Expr==max(pval[c(k,l),]$Expr)),3]+
+                   1.2*adj*pval[c(k,l),][which(pval[c(k,l),]$Expr==max(pval[c(k,l),]$Expr)),5]), 
+         ymax =(pval[c(k,l),][which(pval[c(k,l),]$Expr==max(pval[c(k,l),]$Expr)),3]+
+                 1.2*adj*pval[c(k,l),][which(pval[c(k,l),]$Expr==max(pval[c(k,l),]$Expr)),5]), alpha=1,colour = "black")+
+  annotate("text", x = (k+l)/2, 
+           y = 0.99*(pval[c(k,l),][which(pval[c(k,l),]$Expr==max(pval[c(k,l),]$Expr)),3]+
+                  adj*adj*adj*pval[c(k,l),][which(pval[c(k,l),]$Expr==max(pval[c(k,l),]$Expr)),5]), 
+           label = paste("p = ", round(pv1, digits = 3)), size = 3.5)
+
+print(paste('Bulk RNA-Seq:',Gene))
